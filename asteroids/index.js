@@ -1,5 +1,10 @@
 let c = document.getElementById("c");
+c.width = window.innerWidth;
+c.height = window.innerHeight;
 let ctx = c.getContext("2d");
+
+let width = c.width;
+let height = c.height;
 
 let player = {
     x: 150,
@@ -18,16 +23,49 @@ let input = {
     dn: 0,
     left: 0,
     right: 0,
+    fire: 0,
+    debug: 0
 };
 
 let asteroids = [];
 let bullets = [];
+/* bullet object
+{
+    x: 0,
+    y: 0,
+    xVel: 0,
+    yVel: 0,
+    obj: [
+        [-3, -3, 3, -3, 3, 3, -3, 3]
+    ],
+    sine: 0,
+    cosine: 0,
+}
+*/
+let particles = [];
+/* particle object
+{
+    x: 0,
+    y: 0,
+    xVel: 0,
+    yVel: 0,
+    obj: [
+        [-1, -1, 1, -1, 1, 1, -1, 1]
+    ],
+    cosine: 0,
+    sine: 0
+}
+*/
 
 let rotationSpeed = 0.005;
 let accelSpeed = 0.0005;
+let bulletSpeed = 0.1;
+let particleSpeed = 0.05;
+
+let outerThrustParticleOffset = 0.1;
 
 let draw = blocks => {
-    ctx.clearRect(0, 0, 400, 200);
+    ctx.clearRect(0, 0, width, height);
     for (block of blocks) {
         ctx.beginPath();
         ctx.moveTo(block[0], block[1]);
@@ -49,9 +87,25 @@ let rotate = (x, y, angle) => {
     return [new_x, new_y];
 };
 
-let applyRotation = (x, y, sine, cosine) => {
+let applyRotation = (x, y, cosine, sine) => {
     return [x * cosine - y * sine, x * sine + y * cosine];
 }
+
+let generateRenderBlock = (arr, xOffset, yOffset, cosine, sine) => {
+        let [x1, y1] = applyRotation(arr[0], arr[1], cosine, sine);
+        let [x2, y2] = applyRotation(arr[2], arr[3], cosine, sine);
+        let [x3, y3] = applyRotation(arr[4], arr[5], cosine, sine);
+        let [x4, y4] = applyRotation(arr[6], arr[7], cosine, sine);
+        x1 += xOffset;
+        y1 += yOffset;
+        x2 += xOffset;
+        y2 += yOffset;
+        x3 += xOffset;
+        y3 += yOffset;
+        x4 += xOffset;
+        y4 += yOffset;
+        return [x1, y1, x2, y2, x3, y3, x4, y4];
+};
 
 let lastTime = 0;
 
@@ -62,12 +116,74 @@ let gameEngine = timestamp => {
     let sine = Math.sin(player.rot);
     let cosine = Math.cos(player.rot);
 
-    // let i = applyRotation(1, 0, sine, cosine);
-    let j = applyRotation(0, 1, sine, cosine);
+    // let i = applyRotation(1, 0, cosine, sine);
+    let j = applyRotation(0, 1, cosine, sine);
+
+    if (input.fire) {
+        let [xBullet, yBullet] = applyRotation(0, -20, cosine, sine);
+        bullets.push({
+            x: player.x + xBullet,
+            y: player.y + yBullet,
+            xVel: -j[0] * bulletSpeed,
+            yVel: -j[1] * bulletSpeed,
+            obj: [
+                [-3, -3, 3, -3, 3, 3, -3, 3]
+            ],
+            cosine: cosine,
+            sine: sine
+        });
+    }
 
     if (input.dn) {
         player.xVel = 0;
         player.yVel = 0;
+    }
+
+    if (input.up) {
+        // spawn exhaust particles
+        let cosineLeft = Math.cos(player.rot - outerThrustParticleOffset);
+        let sineLeft = Math.sin(player.rot - outerThrustParticleOffset);
+        let cosineRight = Math.cos(player.rot + outerThrustParticleOffset);
+        let sineRight = Math.sin(player.rot + outerThrustParticleOffset);
+
+        let [xCenter, yCenter] = applyRotation(0, 4, cosine, sine);
+        // let [xLeft, yLeft] = applyRotation(0, 4, cosineLeft, sineLeft);
+        // let [xRight, yRight] = applyRotation(0, 4, cosineRight, sineRight);
+        let jLeft = applyRotation(0, 1, cosineLeft, sineLeft);
+        let jRight = applyRotation(0, 1, cosineRight, sineRight);
+        particles.push({
+            x: player.x + xCenter,
+            y: player.y + yCenter,
+            xVel: jLeft[0] * particleSpeed,
+            yVel: jLeft[1] * particleSpeed,
+            obj: [
+                [-1, -1, 1, -1, 1, 1, -1, 1]
+            ],
+            cosine: cosineLeft,
+            sine: sineLeft,
+        },
+        {
+            x: player.x + xCenter,
+            y: player.y + yCenter,
+            xVel: j[0] * particleSpeed,
+            yVel: j[1] * particleSpeed,
+            obj: [
+                [-1, -1, 1, -1, 1, 1, -1, 1]
+            ],
+            cosine: cosine,
+            sine: sine,
+        },
+        {
+            x: player.x + xCenter,
+            y: player.y + yCenter,
+            xVel: jRight[0] * particleSpeed,
+            yVel: jRight[1] * particleSpeed,
+            obj: [
+                [-1, -1, 1, -1, 1, 1, -1, 1]
+            ],
+            cosine: cosineRight,
+            sine: sineRight,
+        });
     }
 
     player.xVel += input.up * -j[0] * delta * accelSpeed;
@@ -77,38 +193,28 @@ let gameEngine = timestamp => {
     player.x += player.xVel * delta;
     player.y += player.yVel * delta;
     if (player.x < 0)
-        player.x += 399;
-    else if (player.x > 399)
-        player.x -= 399;
+        player.x += width - 1;
+    else if (player.x > width - 1)
+        player.x -= width - 1;
     if (player.y < 0)
-        player.y += 199;
-    else if (player.y > 199)
-        player.y -= 199;
+        player.y += height - 1;
+    else if (player.y > height - 1)
+        player.y -= height - 1;
 
-    let renderBlocks = player.obj.map(arr => {
-        let [x1, y1] = applyRotation(arr[0], arr[1], sine, cosine);
-        let [x2, y2] = applyRotation(arr[2], arr[3], sine, cosine);
-        let [x3, y3] = applyRotation(arr[4], arr[5], sine, cosine);
-        let [x4, y4] = applyRotation(arr[6], arr[7], sine, cosine);
-        // let x1 = arr[0] * i[0] * j[0];
-        // let y1 = arr[1] * i[1] * j[1];
-        // let x2 = arr[2] * i[0] * j[0];
-        // let y2 = arr[3] * i[1] * j[1];
-        // let x3 = arr[4] * i[0] * j[0];
-        // let y3 = arr[5] * i[1] * j[1];
-        // let x4 = arr[6] * i[0] * j[0];
-        // let y4 = arr[7] * i[1] * j[1];
-        x1 += player.x;
-        y1 += player.y;
-        x2 += player.x;
-        y2 += player.y;
-        x3 += player.x;
-        y3 += player.y;
-        x4 += player.x;
-        y4 += player.y;
-        return [x1, y1, x2, y2, x3, y3, x4, y4];
+    let renderBlocks = player.obj.map(arr => generateRenderBlock(arr, player.x, player.y, cosine, sine));
+    bullets.forEach(obj => {
+        obj.x += obj.xVel * delta;
+        obj.y += obj.yVel * delta;
+        renderBlocks.push(...obj.obj.map(arr => generateRenderBlock(arr, obj.x, obj.y, obj.cosine, obj.sine)));
     });
-
+    particles.forEach(obj => {
+        obj.x += obj.xVel * delta;
+        obj.y += obj.yVel * delta;
+        renderBlocks.push(...obj.obj.map(arr => generateRenderBlock(arr, obj.x, obj.y, obj.cosine, obj.sine)));
+    });
+    if (input.debug)
+        console.log(renderBlocks);
+    
     draw(renderBlocks);
 
     window.requestAnimationFrame(gameEngine);
@@ -127,6 +233,12 @@ window.addEventListener("keydown", e => {
             break;
         case "ArrowRight":
             input.right = 1;
+            break;
+        case "f":
+            input.fire = 1;
+            break;
+        case "d":
+            input.debug = 1;
             break;
         default:
             return;
@@ -147,9 +259,22 @@ window.addEventListener("keyup", e => {
         case "ArrowRight":
             input.right = 0;
             break;
+        case "f":
+            input.fire = 0;
+            break;
+        case "d":
+            input.debug = 0;
+            break;
         default:
             return;
     }
 }, true);
+
+window.addEventListener("resize", e => {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    width = c.width;
+    height = c.height;
+});
 
 window.requestAnimationFrame(gameEngine);
