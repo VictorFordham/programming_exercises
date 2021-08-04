@@ -20,6 +20,9 @@ let input = {
     right: 0,
 };
 
+let asteroids = [];
+let bullets = [];
+
 let rotationSpeed = 0.005;
 let accelSpeed = 0.0005;
 
@@ -46,14 +49,21 @@ let rotate = (x, y, angle) => {
     return [new_x, new_y];
 };
 
+let applyRotation = (x, y, sine, cosine) => {
+    return [x * cosine - y * sine, x * sine + y * cosine];
+}
+
 let lastTime = 0;
 
 let gameEngine = timestamp => {
     let delta = timestamp - lastTime;
     lastTime = timestamp;
 
-    let i = rotate(1, 0, player.rot);
-    let j = rotate(0, 1, player.rot);
+    let sine = Math.sin(player.rot);
+    let cosine = Math.cos(player.rot);
+
+    // let i = applyRotation(1, 0, sine, cosine);
+    let j = applyRotation(0, 1, sine, cosine);
 
     if (input.dn) {
         player.xVel = 0;
@@ -76,10 +86,10 @@ let gameEngine = timestamp => {
         player.y -= 199;
 
     let renderBlocks = player.obj.map(arr => {
-        let [x1, y1] = rotate(arr[0], arr[1], player.rot);
-        let [x2, y2] = rotate(arr[2], arr[3], player.rot);
-        let [x3, y3] = rotate(arr[4], arr[5], player.rot);
-        let [x4, y4] = rotate(arr[6], arr[7], player.rot);
+        let [x1, y1] = applyRotation(arr[0], arr[1], sine, cosine);
+        let [x2, y2] = applyRotation(arr[2], arr[3], sine, cosine);
+        let [x3, y3] = applyRotation(arr[4], arr[5], sine, cosine);
+        let [x4, y4] = applyRotation(arr[6], arr[7], sine, cosine);
         // let x1 = arr[0] * i[0] * j[0];
         // let y1 = arr[1] * i[1] * j[1];
         // let x2 = arr[2] * i[0] * j[0];
