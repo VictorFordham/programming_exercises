@@ -62,7 +62,7 @@ let accelSpeed = 0.0005;
 let bulletSpeed = 0.1;
 let particleSpeed = 0.05;
 
-let outerThrustParticleOffset = 0.1;
+let outerThrustParticleOffset = 0.2;
 
 let draw = blocks => {
     ctx.clearRect(0, 0, width, height);
@@ -118,6 +118,9 @@ let gameEngine = timestamp => {
 
     // let i = applyRotation(1, 0, cosine, sine);
     let j = applyRotation(0, 1, cosine, sine);
+
+    bullets = bullets.filter(obj => (obj.x >= 0 && obj.x < width) && (obj.y >= 0 && obj.y < height));
+    particles = particles.filter(obj => (obj.x >= 0 && obj.x < width) && (obj.y >= 0 && obj.y < height));
 
     if (input.fire) {
         let [xBullet, yBullet] = applyRotation(0, -20, cosine, sine);
