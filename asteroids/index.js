@@ -8,6 +8,7 @@ let height = c.height;
 
 let player = {
     despawnable: false,
+    fillStyle: "#ffffff",
     x: 150,
     y: 50,
     rot: 0,
@@ -22,6 +23,7 @@ let player = {
 
 let planet = {
     despawnable: false,
+    fillStyle: "#e33977",
     x: 400,
     y: 400,
     rot: 0,
@@ -33,6 +35,36 @@ let planet = {
     cosine: 1,
     sine: 0,
     mass: 2000,
+};
+
+let sun = {
+    despawnable: false,
+    fillStyle: "#F5D22A",
+    x: 1200,
+    y: 250,
+    rot: 0,
+    xVel: 0,
+    yVel: 0,
+    obj: [
+        [-20, 0, -14, -14, 0, -20, 0, 0],
+        [0, 0, 0, -20, 14, -14, 20, 0],
+        [0, 20, 0, 0, 20, 0, 14, 14],
+        [-14, 14, -20, 0, 0, 0, 0, 20]
+    ],
+    cosine: 1,
+    sine: 0,
+    mass: 10000,
+}
+
+let spectacle = {
+    x: 0,
+    y: 0,
+    xStart: 776,
+    yStart: 350,
+    // xStart: 1000,
+    // yStart: 250,
+    orbitRotation: 0,
+    particleRotation: 0,
 };
 
 let generateBlackHole = (x, y) => {
@@ -47,7 +79,22 @@ let generateBlackHole = (x, y) => {
     }
 };
 
-let gravityObjects = [player, planet];
+let createParticle = (x, y, xVel, yVel, color, cosine, sine) => {
+    return {
+        despawnable: true,
+        fillStyle: color,
+        x: x,
+        y: y,
+        xVel: xVel,
+        yVel: yVel,
+        obj: [
+            [-2, -2, 2, -2, 2, 2, -2, 2]
+        ],
+        cosine: cosine,
+        sine: sine,
+        mass: 0.001,
+    };
+};
 
 let input = {
     up: 0,
@@ -86,21 +133,28 @@ let input = {
 }
 */
 
-let environment = [player, planet];
+let environment = {
+    background: "#000000",
+    gravitySources: [sun, planet],
+    scene: [sun, player, planet],
+}
 
 let rotationSpeed = 0.005;
 let accelSpeed = 0.0005;
 let bulletSpeed = 0.1;
 let particleSpeed = 0.05;
-
+let spectacleOrbitSpeed = 0; //0.0001;
+let spectacleParticleRotSpeed = 0.005;
 let gravityPower = 0.0005;
 
 let outerThrustParticleOffset = 0.2;
 
-let draw = blocks => {
-    ctx.clearRect(0, 0, width, height);
+let draw = (blocks, background) => {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
     for (block of blocks) {
         ctx.beginPath();
+        ctx.fillStyle = block[8];
         ctx.moveTo(block[0], block[1]);
         ctx.lineTo(block[2], block[3]);
         ctx.lineTo(block[4], block[5]);
@@ -110,23 +164,17 @@ let draw = blocks => {
     ctx.stroke();
 };
 
-let applyGravity = (arr, delta) => {
-    for (let i = 0; i < arr.length - 1; i++)
-        for (let j = i + 1; j < arr.length; j++) {
-            let rSquared = Math.pow(arr[i].x - arr[j].x, 2) + Math.pow(arr[i].y - arr[j].y, 2);
-            let angle = Math.atan2(arr[j].y - arr[i].y, arr[j].x - arr[i].x);
+let applyGravity = (sources, objects, delta) => {
+    for (let i = 0; i < sources.length; i++)
+        for (let j = 0; j < objects.length; j++) {
+            if (sources[i] == objects[j]) continue;
+            let rSquared = Math.pow(sources[i].x - objects[j].x, 2) + Math.pow(sources[i].y - objects[j].y, 2);
+            let angle = Math.atan2(sources[i].y - objects[j].y, sources[i].x - objects[j].x);
             let vec = rotate(1, 0, angle);
             let scale = 0;
-            if (rSquared != 0) scale = (gravityPower * arr[j].mass) / rSquared;
-            arr[i].xVel += vec[0] * scale * delta;
-            arr[i].yVel += vec[1] * scale * delta;
-
-            angle = Math.atan2(arr[i].y - arr[j].y, arr[i].x - arr[j].x);
-            vec = rotate(1, 0, angle);
-            scale = 0;
-            if (rSquared != 0) scale = (gravityPower * arr[i].mass) / rSquared;
-            arr[j].xVel += vec[0] * scale * delta;
-            arr[j].yVel += vec[1] * scale * delta;
+            if (rSquared != 0) scale = (gravityPower * sources[i].mass) / rSquared;
+            objects[j].xVel += vec[0] * scale * delta;
+            objects[j].yVel += vec[1] * scale * delta;
         }
 };
 
@@ -142,9 +190,9 @@ let rotate = (x, y, angle) => {
 
 let applyRotation = (x, y, cosine, sine) => {
     return [x * cosine - y * sine, x * sine + y * cosine];
-}
+};
 
-let generateRenderBlock = (arr, xOffset, yOffset, cosine, sine) => {
+let generateRenderBlock = (arr, color, xOffset, yOffset, cosine, sine) => {
         let [x1, y1] = applyRotation(arr[0], arr[1], cosine, sine);
         let [x2, y2] = applyRotation(arr[2], arr[3], cosine, sine);
         let [x3, y3] = applyRotation(arr[4], arr[5], cosine, sine);
@@ -157,7 +205,7 @@ let generateRenderBlock = (arr, xOffset, yOffset, cosine, sine) => {
         y3 += yOffset;
         x4 += xOffset;
         y4 += yOffset;
-        return [x1, y1, x2, y2, x3, y3, x4, y4];
+        return [x1, y1, x2, y2, x3, y3, x4, y4, color];
 };
 
 let lastTime = 0;
@@ -174,11 +222,13 @@ let gameEngine = timestamp => {
     // let i = applyRotation(1, 0, cosine, sine);
     let j = applyRotation(0, 1, cosine, sine);
 
-    environment = environment.filter(obj => (obj.x >= 0 && obj.x <= width) && (obj.y >= 0 && obj.y <= height) || !obj.despawnable);
+    environment.scene = environment.scene.filter(obj => ((obj.x >= 0 && obj.x <= width) && (obj.y >= 0 && obj.y <= height) || !obj.despawnable) && (Math.pow(obj.x - sun.x, 2) + Math.pow(obj.y - sun.y, 2) > 900 || obj == sun));
 
     if (input.fire) {
         let [xBullet, yBullet] = applyRotation(0, -20, cosine, sine);
-        bullets.push({
+        environment.scene.push({
+            despawnable: true,
+            fillStyle: "#000000",
             x: player.x + xBullet,
             y: player.y + yBullet,
             xVel: -j[0] * bulletSpeed,
@@ -208,45 +258,11 @@ let gameEngine = timestamp => {
         // let [xRight, yRight] = applyRotation(0, 4, cosineRight, sineRight);
         let jLeft = applyRotation(0, 1, cosineLeft, sineLeft);
         let jRight = applyRotation(0, 1, cosineRight, sineRight);
-        environment.push({
-            despawnable: true,
-            x: player.x + xCenter,
-            y: player.y + yCenter,
-            xVel: jLeft[0] * particleSpeed,
-            yVel: jLeft[1] * particleSpeed,
-            obj: [
-                [-1, -1, 1, -1, 1, 1, -1, 1]
-            ],
-            cosine: cosineLeft,
-            sine: sineLeft,
-            mass: 0.001,
-        },
-        {
-            despawnable: true,
-            x: player.x + xCenter,
-            y: player.y + yCenter,
-            xVel: j[0] * particleSpeed,
-            yVel: j[1] * particleSpeed,
-            obj: [
-                [-1, -1, 1, -1, 1, 1, -1, 1]
-            ],
-            cosine: cosine,
-            sine: sine,
-            mass: 0.001,
-        },
-        {
-            despawnable: true,
-            x: player.x + xCenter,
-            y: player.y + yCenter,
-            xVel: jRight[0] * particleSpeed,
-            yVel: jRight[1] * particleSpeed,
-            obj: [
-                [-1, -1, 1, -1, 1, 1, -1, 1]
-            ],
-            cosine: cosineRight,
-            sine: sineRight,
-            mass: 0.001,
-        });
+        environment.scene.push(
+            createParticle(player.x + xCenter, player.y + yCenter, jLeft[0] * particleSpeed, jLeft[1] * particleSpeed, "#F55BD5", cosineLeft, sineLeft),
+            createParticle(player.x + xCenter, player.y + yCenter, j[0] * particleSpeed, j[1] * particleSpeed, "#4EA2F5", cosine, sine),
+            createParticle(player.x + xCenter, player.y + yCenter, jRight[0] * particleSpeed, jRight[1] * particleSpeed, "#42F5EF", cosineRight, sineRight)
+        );
     }
 
     player.xVel += input.up * -j[0] * delta * accelSpeed;
@@ -263,18 +279,49 @@ let gameEngine = timestamp => {
     else if (player.y > height - 1)
         player.y -= height - 1;
 
-    applyGravity(environment.filter(obj => obj.mass != undefined), delta);
+    spectacle.orbitRotation += spectacleOrbitSpeed * delta;
+    spectacle.particleRotation += spectacleParticleRotSpeed * delta;
+
+    [spectacle.x, spectacle.y] = rotate(spectacle.xStart - sun.x, spectacle.yStart - sun.y, spectacle.orbitRotation);
+    spectacle.x += sun.x;
+    spectacle.y += sun.y;
+
+    let spectacleCosine = Math.cos(spectacle.particleRotation);
+    let spectacleSine = Math.sin(spectacle.particleRotation);
+    let spectacleCosineLeft = Math.cos(spectacle.particleRotation - outerThrustParticleOffset);
+    let spectacleSineLeft = Math.sin(spectacle.particleRotation - outerThrustParticleOffset);
+    let spectacleCosineRight = Math.cos(spectacle.particleRotation + outerThrustParticleOffset);
+    let spectacleSineRight = Math.sin(spectacle.particleRotation + outerThrustParticleOffset);
+
+    let spectacleJ = applyRotation(0, 1, spectacleCosine, spectacleSine);
+    let spectacleJLeft = applyRotation(0, 1, spectacleCosineLeft,spectacleSineLeft);
+    let spectacleJRight = applyRotation(0, 1, spectacleCosineRight, spectacleSineRight);
+    environment.scene.push(
+        createParticle(spectacle.x + spectacleJ[0], spectacle.y + spectacleJ[1], spectacleJLeft[0] * particleSpeed, spectacleJLeft[1] * particleSpeed, "#F55BD5", spectacleCosineLeft, spectacleSineLeft),
+        createParticle(spectacle.x + spectacleJ[0], spectacle.y + spectacleJ[1], spectacleJ[0] * particleSpeed, spectacleJ[1] * particleSpeed, "#4EA2F5", spectacleCosine, spectacleSine),
+        createParticle(spectacle.x + spectacleJ[0], spectacle.y + spectacleJ[1], spectacleJRight[0] * particleSpeed, spectacleJRight[1] * particleSpeed, "#42F5EF", spectacleCosineRight, spectacleSineRight),
+        createParticle(spectacle.x + spectacleJ[0], spectacle.y + spectacleJ[1], -spectacleJLeft[0] * particleSpeed, -spectacleJLeft[1] * particleSpeed, "#F55BD5", spectacleCosineLeft, spectacleSineLeft),
+        createParticle(spectacle.x + spectacleJ[0], spectacle.y + spectacleJ[1], -spectacleJ[0] * particleSpeed, -spectacleJ[1] * particleSpeed, "#4EA2F5", spectacleCosine, spectacleSine),
+        createParticle(spectacle.x + spectacleJ[0], spectacle.y + spectacleJ[1], -spectacleJRight[0] * particleSpeed, -spectacleJRight[1] * particleSpeed, "#42F5EF", spectacleCosineRight, spectacleSineRight)
+    );
+
+    applyGravity(environment.gravitySources, environment.scene.filter(obj => obj.mass != undefined), delta);
+
+    planet.xVel = 0;
+    planet.yVel = 0;
+    sun.xVel = 0;
+    sun.yVel = 0;
 
     let renderBlocks = [];
-    environment.forEach(obj => {
+    environment.scene.forEach(obj => {
         obj.x += obj.xVel * delta;
         obj.y += obj.yVel * delta;
-        renderBlocks.push(...obj.obj.map(arr => generateRenderBlock(arr, obj.x, obj.y, obj.cosine, obj.sine)));
+        renderBlocks.push(...obj.obj.map(arr => generateRenderBlock(arr, obj.fillStyle, obj.x, obj.y, obj.cosine, obj.sine)));
     });
     if (input.debug)
         console.log(renderBlocks);
     
-    draw(renderBlocks);
+    draw(renderBlocks, environment.background);
 
     window.requestAnimationFrame(gameEngine);
 };
