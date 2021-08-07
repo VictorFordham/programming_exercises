@@ -7,16 +7,47 @@ let width = c.width;
 let height = c.height;
 
 let player = {
+    despawnable: false,
     x: 150,
     y: 50,
     rot: 0,
     xVel: 0,
     yVel: 0,
     obj: [
-        [-5, -15, 5, -15, 5, 5, -5, -5],
+        [-5, -15, 5, -15, 5, -5, -5, -5],
         [-8, -5, 8, -5, 12, 5, -12, 5]
-    ]
+    ],
+    mass: 10,
 };
+
+let planet = {
+    despawnable: false,
+    x: 400,
+    y: 400,
+    rot: 0,
+    xVel: 0,
+    yVel: 0,
+    obj: [
+        [-5, -5, 5, -5, 5, 5, -5, 5]
+    ],
+    cosine: 1,
+    sine: 0,
+    mass: 2000,
+};
+
+let generateBlackHole = (x, y) => {
+    let blackHole = {
+        x: x,
+        y: y,
+        obj: [
+            [-5, 0, -2, -5, 2, -5, 5, 0],
+            [-5, 0, -2, 5, 2, 5, 5, 0]
+        ],
+        mass: 10000,
+    }
+};
+
+let gravityObjects = [player, planet];
 
 let input = {
     up: 0,
@@ -27,8 +58,6 @@ let input = {
     debug: 0
 };
 
-let asteroids = [];
-let bullets = [];
 /* bullet object
 {
     x: 0,
@@ -42,7 +71,7 @@ let bullets = [];
     cosine: 0,
 }
 */
-let particles = [];
+
 /* particle object
 {
     x: 0,
@@ -57,10 +86,14 @@ let particles = [];
 }
 */
 
+let environment = [player, planet];
+
 let rotationSpeed = 0.005;
 let accelSpeed = 0.0005;
 let bulletSpeed = 0.1;
 let particleSpeed = 0.05;
+
+let gravityPower = 0.0005;
 
 let outerThrustParticleOffset = 0.2;
 
@@ -75,6 +108,26 @@ let draw = blocks => {
         ctx.fill();
     }
     ctx.stroke();
+};
+
+let applyGravity = (arr, delta) => {
+    for (let i = 0; i < arr.length - 1; i++)
+        for (let j = i + 1; j < arr.length; j++) {
+            let rSquared = Math.pow(arr[i].x - arr[j].x, 2) + Math.pow(arr[i].y - arr[j].y, 2);
+            let angle = Math.atan2(arr[j].y - arr[i].y, arr[j].x - arr[i].x);
+            let vec = rotate(1, 0, angle);
+            let scale = 0;
+            if (rSquared != 0) scale = (gravityPower * arr[j].mass) / rSquared;
+            arr[i].xVel += vec[0] * scale * delta;
+            arr[i].yVel += vec[1] * scale * delta;
+
+            angle = Math.atan2(arr[i].y - arr[j].y, arr[i].x - arr[j].x);
+            vec = rotate(1, 0, angle);
+            scale = 0;
+            if (rSquared != 0) scale = (gravityPower * arr[i].mass) / rSquared;
+            arr[j].xVel += vec[0] * scale * delta;
+            arr[j].yVel += vec[1] * scale * delta;
+        }
 };
 
 let rotate = (x, y, angle) => {
@@ -115,12 +168,13 @@ let gameEngine = timestamp => {
 
     let sine = Math.sin(player.rot);
     let cosine = Math.cos(player.rot);
+    player.sine = sine;
+    player.cosine = cosine;
 
     // let i = applyRotation(1, 0, cosine, sine);
     let j = applyRotation(0, 1, cosine, sine);
 
-    bullets = bullets.filter(obj => (obj.x >= 0 && obj.x < width) && (obj.y >= 0 && obj.y < height));
-    particles = particles.filter(obj => (obj.x >= 0 && obj.x < width) && (obj.y >= 0 && obj.y < height));
+    environment = environment.filter(obj => (obj.x >= 0 && obj.x <= width) && (obj.y >= 0 && obj.y <= height) || !obj.despawnable);
 
     if (input.fire) {
         let [xBullet, yBullet] = applyRotation(0, -20, cosine, sine);
@@ -154,7 +208,8 @@ let gameEngine = timestamp => {
         // let [xRight, yRight] = applyRotation(0, 4, cosineRight, sineRight);
         let jLeft = applyRotation(0, 1, cosineLeft, sineLeft);
         let jRight = applyRotation(0, 1, cosineRight, sineRight);
-        particles.push({
+        environment.push({
+            despawnable: true,
             x: player.x + xCenter,
             y: player.y + yCenter,
             xVel: jLeft[0] * particleSpeed,
@@ -164,8 +219,10 @@ let gameEngine = timestamp => {
             ],
             cosine: cosineLeft,
             sine: sineLeft,
+            mass: 0.001,
         },
         {
+            despawnable: true,
             x: player.x + xCenter,
             y: player.y + yCenter,
             xVel: j[0] * particleSpeed,
@@ -175,8 +232,10 @@ let gameEngine = timestamp => {
             ],
             cosine: cosine,
             sine: sine,
+            mass: 0.001,
         },
         {
+            despawnable: true,
             x: player.x + xCenter,
             y: player.y + yCenter,
             xVel: jRight[0] * particleSpeed,
@@ -186,6 +245,7 @@ let gameEngine = timestamp => {
             ],
             cosine: cosineRight,
             sine: sineRight,
+            mass: 0.001,
         });
     }
 
@@ -193,8 +253,7 @@ let gameEngine = timestamp => {
     player.yVel += input.up * -j[1] * delta * accelSpeed;
 
     player.rot += (input.left * -rotationSpeed * delta) + (input.right * rotationSpeed * delta);
-    player.x += player.xVel * delta;
-    player.y += player.yVel * delta;
+
     if (player.x < 0)
         player.x += width - 1;
     else if (player.x > width - 1)
@@ -204,13 +263,10 @@ let gameEngine = timestamp => {
     else if (player.y > height - 1)
         player.y -= height - 1;
 
-    let renderBlocks = player.obj.map(arr => generateRenderBlock(arr, player.x, player.y, cosine, sine));
-    bullets.forEach(obj => {
-        obj.x += obj.xVel * delta;
-        obj.y += obj.yVel * delta;
-        renderBlocks.push(...obj.obj.map(arr => generateRenderBlock(arr, obj.x, obj.y, obj.cosine, obj.sine)));
-    });
-    particles.forEach(obj => {
+    applyGravity(environment.filter(obj => obj.mass != undefined), delta);
+
+    let renderBlocks = [];
+    environment.forEach(obj => {
         obj.x += obj.xVel * delta;
         obj.y += obj.yVel * delta;
         renderBlocks.push(...obj.obj.map(arr => generateRenderBlock(arr, obj.x, obj.y, obj.cosine, obj.sine)));
