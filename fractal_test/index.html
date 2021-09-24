@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="main.css"/>
+    <title>Fractal Test</title>
+</head>
+<body>
+    <div class="main">
+
+        <div class="slidecontainer">
+            <input type="range" min="1" max="1000" value="1" class="sider" id="size" onchange="handleSizeChange();" />
+            <input type="range" min="0" max="1000" value="0" class="sider" id="offset" onchange="handleOffsetChange();" />
+            <input type="range" min="1" max="1000" value="1" class="sider" id="rotation" onchange="handleRotationChange();" />
+        </div>
+
+        <canvas id="c" height="200" width="400"></canvas>
+        <script src="index.js"></script>
+    </div>
+</body>
+</html>
