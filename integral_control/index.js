@@ -64,7 +64,7 @@ const main = timestamp => {
         chaserPosition = chaserPosition.add(
             chaserToMouse.scale(movement)
         );
-        }
+    }
 
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
