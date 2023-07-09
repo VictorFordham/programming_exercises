@@ -59,8 +59,8 @@ const main = timestamp => {
     const error = chaserToMouse.magnitude();
     const correctionMagnitude = getCorrectionMagnitude(error) * delta;
 
-    const movement = correctionMagnitude / error;
-    if (!isNaN(movement)) {
+    if (error !== 0) {
+        const movement = correctionMagnitude / error;
         chaserPosition = chaserPosition.add(
             chaserToMouse.scale(movement)
         );
