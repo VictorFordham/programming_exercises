@@ -38,8 +38,10 @@ class Vec2 {
 const mousePosition = new Vec2(0, 0);
 let chaserPosition = new Vec2(0, 0);
 
-const errorHistory = [];
-const getCorrectionMagnitude = error => {
+const errorHistoryX = [];
+const errorHistoryY = [];
+
+const getCorrectionMagnitude = (error, errorHistory) => {
     while (errorHistory.length > 19)
         errorHistory.shift();
 
@@ -56,15 +58,16 @@ const main = timestamp => {
     lastTimestamp = timestamp;
 
     const chaserToMouse = mousePosition.sub(chaserPosition);
-    const error = chaserToMouse.magnitude();
-    const correctionMagnitude = getCorrectionMagnitude(error) * delta;
 
-    if (error !== 0) {
-        const movement = correctionMagnitude / error;
-        chaserPosition = chaserPosition.add(
-            chaserToMouse.scale(movement)
-        );
-    }
+    const errorX = chaserToMouse.x;
+    const errorY = chaserToMouse.y;
+
+    const correctionMagnitudeX = getCorrectionMagnitude(errorX, errorHistoryX) * delta;
+    const correctionMagnitudeY = getCorrectionMagnitude(errorY, errorHistoryY) * delta;
+
+    movement = new Vec2(correctionMagnitudeX, correctionMagnitudeY);
+
+    chaserPosition = chaserPosition.add(movement);
 
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
