@@ -87,11 +87,12 @@ const mainLoop = timestamp => {
         ctx.fill();
     }
 
-    if (points.length > 1) {
-        const [xPolynomial, yPolynomial] = generatePolynomials(points);
+    if (points.length > 0) {
+        const fullPoints = mouseState.isClicked ? [...points, mouseState] : points;
+        const [xPolynomial, yPolynomial] = generatePolynomials(fullPoints);
 
         ctx.fillStyle = "blue";
-        for (let t = 0; t < points.length - 1;) {
+        for (let t = 0; t < fullPoints.length - 1;) {
             const [x, xDot] = xPolynomial(t);
             const [y, yDot] = yPolynomial(t);
 
