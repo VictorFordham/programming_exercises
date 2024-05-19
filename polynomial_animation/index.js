@@ -11,6 +11,7 @@ const mouseState = {
     isClicked: false,
 };
 let randomize = false;
+let selectedPoint = null;
 
 const generatePolynomials = points => {
     const xPolynomials = [];
@@ -71,27 +72,23 @@ const mainLoop = timestamp => {
     }
 
     ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, c.width, c.height);
-
-    ctx.fillStyle = "blue";
-    points.forEach(point => {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 10, 0, 2 * Math.PI);
-        ctx.fill();
-    });
-
-    if (mouseState.isClicked) {
-        ctx.fillStyle = "blue";
-        ctx.beginPath();
-        ctx.arc(mouseState.x, mouseState.y, 10, 0, 2 * Math.PI);
-        ctx.fill();
-    }
+    ctx.fillRect(0, 0, c.width, c.height);    
 
     if (points.length > 0) {
-        const fullPoints = mouseState.isClicked ? [...points, mouseState] : points;
+        const fullPoints = mouseState.isClicked && !selectedPoint ? [...points, mouseState] : points;
+        if (selectedPoint) {
+            selectedPoint.x = mouseState.x;
+            selectedPoint.y = mouseState.y;
+        }
         const [xPolynomial, yPolynomial] = generatePolynomials(fullPoints);
 
         ctx.fillStyle = "blue";
+        fullPoints.forEach(point => {
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 10, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+
         for (let t = 0; t < fullPoints.length - 1;) {
             const [x, xDot] = xPolynomial(t);
             const [y, yDot] = yPolynomial(t);
@@ -110,10 +107,25 @@ const mainLoop = timestamp => {
 
 c.addEventListener("mousedown", e => {
     mouseState.isClicked = true;
+
+    const closestPoint = points.find(point => {
+        const x = mouseState.x - point.x;
+        const y = mouseState.y - point.y;
+
+        return x * x + y * y < 150;
+    });
+    if (closestPoint) {
+        selectedPoint = closestPoint;
+    }
 });
 
 c.addEventListener("mouseup", e => {
     mouseState.isClicked = false;
+    if (selectedPoint) {
+        selectedPoint = null;
+        return;
+    }
+
     points.push({
         x: mouseState.x,
         y: mouseState.y,
