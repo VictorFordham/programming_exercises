@@ -3,6 +3,7 @@ c.width = window.innerWidth;
 c.height = window.innerHeight;
 const ctx = c.getContext("2d");
 
+const maxIncrement = 0.08;
 const points = [];
 
 const mouseState = {
@@ -97,8 +98,8 @@ const mainLoop = timestamp => {
             ctx.arc(x, y, 2, 0, 2 * Math.PI);
             ctx.fill();
 
-
-            t += 4 / Math.sqrt(xDot * xDot + yDot * yDot);
+            const increment = 4 / Math.sqrt(xDot * xDot + yDot * yDot);
+            t += Math.max(increment, maxIncrement);
         }
     }
 
