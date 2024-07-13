@@ -99,7 +99,7 @@ const mainLoop = timestamp => {
             ctx.fill();
 
             const increment = 4 / Math.sqrt(xDot * xDot + yDot * yDot);
-            t += Math.max(increment, maxIncrement);
+            t += Math.min(increment, maxIncrement);
         }
     }
 
