@@ -56,7 +56,7 @@ const main = timestamp => {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const timestampOffset = 50;
-        let halfSideLength = 200;
+        let halfSideLength = Math.min(centerX, centerY) - 20;
         let rotation = 0;
         for (let i = 0; i < 10; i++) {
             let [pointX, pointY] = rotate(
